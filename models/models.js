@@ -22,8 +22,9 @@ const Device = sequelize.define("device", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING, unique: true },
   price: { type: DataTypes.INTEGER, allowNull: false },
-  rating: { type: DataTypes.INTEGER, defaultValue: 0 },
+  rating: { type: DataTypes.FLOAT, defaultValue: 5 },
   img: { type: DataTypes.STRING, allowNull: false },
+  description: { type: DataTypes.STRING, defaultValue: "description.txt" },
 });
 
 const Type = sequelize.define("type", {
@@ -113,7 +114,6 @@ module.exports = {
   User,
   Basket,
   BasketDevice,
-  Device,
   Type,
   Brand,
   Rating,
@@ -122,4 +122,5 @@ module.exports = {
   PendingPurchase,
   Order,
   OrderRecords,
+  Device,
 };

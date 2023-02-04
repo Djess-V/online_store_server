@@ -8,15 +8,28 @@ class DeviceController {
   async create(req, res, next) {
     try {
       let { name, price, brandId, typeId, info } = req.body;
-      const { img } = req.files;
-      let fileName = uuid.v4() + ".jpg";
-      img.mv(path.resolve(__dirname, "..", "static", fileName));
+      const { img, description } = req.files;
+
+      let imgFileName;
+      if (img.mimetype === "image/webp") {
+        imgFileName = uuid.v4() + ".webp";
+      } else {
+        imgFileName = uuid.v4() + ".jpg";
+      }
+
+      const descFileName = uuid.v4() + ".txt";
+
+      img.mv(path.resolve(__dirname, "..", "static", imgFileName));
+      description.mv(
+        path.resolve(__dirname, "..", "static/description", descFileName)
+      );
       const device = await Device.create({
         name,
         price,
         brandId,
         typeId,
-        img: fileName,
+        img: imgFileName,
+        description: descFileName,
       });
 
       if (info) {
@@ -37,44 +50,62 @@ class DeviceController {
   }
 
   async getAll(req, res) {
-    let { brandId, typeId, limit, page } = req.query;
-    page = page || 1;
-    limit = limit || 9;
-    let offset = page * limit - limit;
-    let devices;
-    if (!brandId && !typeId) {
-      devices = await Device.findAndCountAll({
-        limit,
-        offset,
-        include: [{ model: DeviceInfo, as: "info" }],
-      });
-    }
-    if (brandId && !typeId) {
-      devices = await Device.findAndCountAll({
-        where: { brandId },
-        include: [{ model: DeviceInfo, as: "info" }],
-        limit,
-        offset,
-      });
-    }
-    if (!brandId && typeId) {
-      devices = await Device.findAndCountAll({
-        where: { typeId },
-        include: [{ model: DeviceInfo, as: "info" }],
-        limit,
-        offset,
-      });
-    }
-    if (brandId && typeId) {
-      devices = await Device.findAndCountAll({
-        where: { brandId, typeId },
-        include: [{ model: DeviceInfo, as: "info" }],
-        limit,
-        offset,
-      });
-    }
+    try {
+      let { brandId, typeId, limit, page } = req.query;
+      page = page || 1;
+      limit = limit || 9;
+      let offset = page * limit - limit;
+      let devices;
+      if (!brandId && !typeId) {
+        devices = await Device.findAndCountAll({
+          limit,
+          offset,
+          include: [{ model: DeviceInfo, as: "info" }],
+        });
+      }
+      if (brandId && !typeId) {
+        devices = await Device.findAndCountAll({
+          where: { brandId },
+          include: [{ model: DeviceInfo, as: "info" }],
+          limit,
+          offset,
+        });
+      }
+      if (!brandId && typeId) {
+        devices = await Device.findAndCountAll({
+          where: { typeId },
+          include: [{ model: DeviceInfo, as: "info" }],
+          limit,
+          offset,
+        });
+      }
+      if (brandId && typeId) {
+        devices = await Device.findAndCountAll({
+          where: { brandId, typeId },
+          include: [{ model: DeviceInfo, as: "info" }],
+          limit,
+          offset,
+        });
+      }
 
-    return res.json(devices);
+      for (let device of devices.rows) {
+        const content = fs.readFileSync(
+          path.resolve(
+            __dirname,
+            "..",
+            "static/description",
+            device.dataValues.description
+          ),
+          "utf-8"
+        );
+
+        device.dataValues.description = content;
+      }
+
+      return res.json(devices);
+    } catch (e) {
+      next(ApiError.badRequest(e.message));
+    }
   }
 
   async getOne(req, res) {
